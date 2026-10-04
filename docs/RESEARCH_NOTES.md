@@ -16,7 +16,10 @@ Simulated API files: `gorilla_file_system.py`, `math_api.py`, `message_api.py`, 
 | Service | Limits | Source |
 |---|---|---|
 | Groq | Free models include `openai/gpt-oss-120b`, `openai/gpt-oss-20b`, `qwen/qwen3.8-27b`: 30 RPM, 1K RPD, 8K TPM, 200K TPD **per model**. Llama models are no longer on the free list. | https://console.groq.com/docs/rate-limits |
-| Cerebras | ~1M tokens/day, no card; **8K context cap** on free models; RPM/TPM vary by account | https://tokenmix.ai/blog/cerebras-api-key-rate-limits-free-tier-2026 |
+| ~~Cerebras~~ **Rejected** | **Requires a payment card** to activate API access (seen on its console, 2026-10-04). Its one-time $5 credit expires after 30 days, then access pauses. Third-party "no card" claims were wrong. | Cerebras console |
+| Google AI Studio (Gemini) | No card; key needs only a Google account. Flash/Flash-Lite models with function calling. Per-project RPM/TPM/RPD; resets midnight Pacific; tightened in 2026 and not guaranteed. OpenAI-compatible endpoint. | https://aireiter.com/blog/google-ai-studio-free-api · https://ai.google.dev/gemini-api/docs/function-calling |
+| GitHub Models | Free with a GitHub account. Low-tier models (e.g. gpt-4o-mini): 15 RPM / 150 RPD; high-tier: 10 RPM / 50 RPD; **8K input tokens per request** | https://getaitools.dev/service/github-models |
+| OpenRouter `:free` models | 20 RPM, **50 requests/day** without $10 of purchased credit. Last resort only. | https://klymentiev.com/blog/openrouter-free-tier |
 | Vercel Hobby | Python functions; 300 s max duration (Fluid compute); 2 GB / 1 vCPU; 500 MB Python bundle; 4.5 MB request/response body; non-commercial use | https://vercel.com/docs/functions/limitations |
 | Upstash Redis | 500K commands/month, 256 MB data, 10 GB bandwidth | https://upstash.com/blog/redis-new-pricing |
 | Gemini API | Free tier tightened in 2026; quotas per project, not guaranteed | https://www.memetik.ai/guides/gemini-api-free-tier-limits |

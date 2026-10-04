@@ -11,14 +11,14 @@ Context for AI coding sessions on this repo.
 - **C4** multi-agent study
 - **C5** quota-aware provider router
 
-It is evaluated on **BFCL multi-turn** tasks (simulated, sandboxed Python APIs) and deployed at ₹0 on Vercel + Upstash, with Groq/Cerebras free-tier LLMs.
+It is evaluated on **BFCL multi-turn** tasks (simulated, sandboxed Python APIs) and deployed at ₹0 on Vercel + Upstash, with Groq free-tier LLMs (fallbacks: Gemini via AI Studio, GitHub Models).
 
 - Plan and progress checkboxes: `docs/PROJECT_PLAN.md`. Check the current phase there first.
 - Verified facts, free-tier limits and papers: `docs/RESEARCH_NOTES.md`.
 
 ## Hard rules
 
-- **₹0 infrastructure.** Free tiers only, no card-required services. No paid APIs (e.g. SerpAPI), so skip BFCL `web_search`.
+- **₹0 infrastructure.** Free tiers only, no card-required services. Confirm "no card" on the provider's own signup or limits page; third-party summaries were wrong about Cerebras. No paid APIs (e.g. SerpAPI), so skip BFCL `web_search`.
 - **Never commit API keys.** Use `.env` locally and Vercel env vars in deployment.
 - **Never invent results.** Resume and README numbers come only from `eval/` outputs.
 - **Evaluation hygiene.** Don't tune on `eval/tasks/frozen_sample.jsonl` once it's frozen (Phase 3). Plan-cache warm-up tasks must be disjoint from test tasks.

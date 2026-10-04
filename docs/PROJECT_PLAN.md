@@ -17,13 +17,13 @@ Progress tracking: tick boxes as you go.
 
 ## Phase 0: Setup (Week 1)
 
-- [ ] Create accounts (no card needed): GitHub, Vercel, Groq, Cerebras, Upstash
-- [ ] Python 3.12 venv (avoid 3.13 for ML libs) + Node.js LTS
-- [ ] Repo skeleton: `agent/`, `api/`, `web/`, `eval/`, `docs/` (done)
-- [ ] `requirements.txt`, `.env` from `.env.example`
-- [ ] Set `OLLAMA_MODELS=D:\ollama` and `HF_HOME=D:\hf` (C: has little free space)
+- [ ] Create accounts (no card needed): GitHub, Vercel, Groq, Google AI Studio (Gemini key), Upstash. GitHub Models works with the GitHub account. **Not Cerebras:** it now requires a card.
+- [x] Python 3.12 venv (avoid 3.13 for ML libs) + Node.js LTS (using 3.11.0 in `.venv`, since 3.12 isn't installed; Node 22.15)
+- [x] Repo skeleton: `agent/`, `api/`, `web/`, `eval/`, `docs/` (done)
+- [x] `requirements.txt`, `.env` from `.env.example`
+- [x] Set `OLLAMA_MODELS=D:\ollama` and `HF_HOME=D:\hf` (C: has little free space)
 - [ ] GitHub Actions workflow running `pytest`
-- [ ] `scripts/hello_groq.py`: one chat completion + one tool call against Groq
+- [x] `scripts/hello_groq.py`: one chat completion + one tool call against Groq (verified 2026-10-04 with `openai/gpt-oss-120b`)
 
 **Exit:** Groq call works from Python; CI is green.
 
@@ -90,7 +90,7 @@ Progress tracking: tick boxes as you go.
 ## Phase 6: C5, quota-aware provider router (Week 11)
 
 - [ ] Track per-model RPM/TPM/RPD/TPD in Redis
-- [ ] Route Groq `gpt-oss-120b` → Groq `qwen3.8-27b` → Cerebras, failing over on 429s and timeouts, with exponential backoff
+- [ ] Route Groq `gpt-oss-120b` → Groq `qwen3.8-27b` → Groq `gpt-oss-20b` → Gemini Flash (AI Studio) → GitHub Models (Groq limits are per model, so each Groq model is its own quota), failing over on 429s and timeouts, with exponential backoff
 - [ ] Load test that simulates concurrent demo visitors
 
 **Metrics:** request success rate under load, with vs. without the router.

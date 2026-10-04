@@ -25,9 +25,9 @@ LLM agents solve tasks by calling tools step by step. In practice they are:
 |---|---|
 | [smolagents](https://github.com/huggingface/smolagents) (Hugging Face, Apache-2.0): agent loop, tool-calling agents, managed (multi-)agents | **C1: Tool retrieval.** Show the LLM only the top-k relevant tools each step (BM25 / embedding / hybrid) |
 | [BFCL](https://github.com/ShishirPatil/gorilla/tree/main/berkeley-function-call-leaderboard) (UC Berkeley, Apache-2.0): multi-turn benchmark with simulated, stateful Python APIs and state-based scoring | **C2: Validate-and-repair.** Check every tool call against its schema and give targeted error feedback for a bounded retry |
-| Groq / Cerebras free-tier LLM APIs | **C3: Plan caching.** Reuse plan templates across similar tasks (inspired by [Agentic Plan Caching, NeurIPS 2025](https://arxiv.org/abs/2506.14852)) |
+| Groq / Gemini / GitHub Models free-tier LLM APIs | **C3: Plan caching.** Reuse plan templates across similar tasks (inspired by [Agentic Plan Caching, NeurIPS 2025](https://arxiv.org/abs/2506.14852)) |
 | | **C4: Multi-agent study.** Planner / executor / verifier vs. single agent at an equal token budget |
-| | **C5: Quota-aware provider router.** Tracks per-model RPM/TPM/TPD and fails over (Groq → Cerebras) |
+| | **C5: Quota-aware provider router.** Tracks per-model RPM/TPM/TPD and fails over (Groq models → Gemini → GitHub Models) |
 | | Evaluation harness, live streaming demo, results dashboard |
 
 ## Architecture
@@ -56,7 +56,7 @@ LLM agents solve tasks by calling tools step by step. In practice they are:
    ┌────────────▼──────────┐   ┌─────────▼──────────────────┐
    │ Upstash Redis (free)  │   │ LLM APIs (free tiers)      │
    │ • plan cache          │   │ Groq gpt-oss-120b / qwen   │
-   │ • rate limit / budget │   │ → Cerebras fallback        │
+   │ • rate limit / budget │   │ → Gemini → GitHub Models   │
    │ • recorded replays    │   └────────────────────────────┘
    └───────────────────────┘
 ```
@@ -87,7 +87,7 @@ Skipped: `web_search.py` (requires paid SerpAPI). Memory APIs are a stretch goal
 |---|---|
 | Agent framework | smolagents (Apache-2.0) |
 | Benchmark + tools | BFCL (Apache-2.0) |
-| LLMs | Groq free tier (`openai/gpt-oss-120b`, `openai/gpt-oss-20b`, `qwen/qwen3.8-27b`); Cerebras free tier as fallback |
+| LLMs | Groq free tier (`openai/gpt-oss-120b`, `openai/gpt-oss-20b`, `qwen/qwen3.8-27b`); fallbacks: Gemini Flash via Google AI Studio, then GitHub Models. All without a card. |
 | Local dev LLM (optional) | Ollama + `qwen2.5:3b-instruct` |
 | Retrieval (C1) | `rank-bm25`; `sentence-transformers` (embeddings precomputed at build time) |
 | Validation (C2) | Pydantic / jsonschema |

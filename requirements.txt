@@ -1,0 +1,14 @@
+# Core agent framework (Apache-2.0). openai extra = OpenAI-compatible backends (Groq, Gemini, GitHub Models, Ollama).
+smolagents[openai]==1.26.0
+openai>=1.40
+python-dotenv>=1.0
+
+# Validation (C2)
+pydantic>=2.7
+jsonschema>=4.22
+
+# Redis (rate limits, budget, plan cache)
+upstash-redis>=1.1
+
+# Dev / test
+pytest>=8.0
