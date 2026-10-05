@@ -14,6 +14,7 @@ Context for AI coding sessions on this repo.
 It is evaluated on **BFCL multi-turn** tasks (simulated, sandboxed Python APIs) and deployed at ₹0 on Vercel + Upstash, with Groq free-tier LLMs (fallbacks: Gemini via AI Studio, GitHub Models).
 
 - Plan and progress checkboxes: `docs/PROJECT_PLAN.md`. Check the current phase there first.
+- **Phase log:** `docs/PHASE_LOG.md` records, per phase, what was done, the findings, and how the project's direction changed. Update it at the end of every phase, and mid-phase when a finding changes the plan.
 - Verified facts, free-tier limits and papers: `docs/RESEARCH_NOTES.md`.
 
 ## Hard rules
@@ -24,6 +25,7 @@ It is evaluated on **BFCL multi-turn** tasks (simulated, sandboxed Python APIs) 
 - **Evaluation hygiene.** Don't tune on `eval/tasks/frozen_sample.jsonl` once it's frozen (Phase 3). Plan-cache warm-up tasks must be disjoint from test tasks.
 - **Attribution.** smolagents and BFCL are Apache-2.0. Keep their license notices and mark modified files.
 - Keep providers swappable via config. Free-tier limits change.
+- Runtime deps go in `requirements.txt` (Vercel installs it); dev-only tools in `requirements-dev.txt`.
 
 ## Environment
 
@@ -34,9 +36,12 @@ It is evaluated on **BFCL multi-turn** tasks (simulated, sandboxed Python APIs) 
 ## Layout
 
 ```
-agent/  core extensions (retrieval/, validation/, plan_cache/, router/, multi_agent/)
-api/    Vercel Python functions (/api/run streams agent steps)
-web/    Next.js + TS + Tailwind frontend
-eval/   BFCL adapter, run.py, analyze.py, tasks/, results/
-docs/   plan, research notes, architecture notes
+agent/        core: bfcl_adapter.py (BFCL APIs as tools + scoring), runner.py (shared agent loop,
+              streams trace events); later retrieval/, validation/, plan_cache/, router/, multi_agent/
+server/       FastAPI app for the demo (Vercel Python service at /api; app.py, guard.py)
+web/          Next.js + TS + Tailwind frontend (Vercel service at /)
+eval/         run_smoke.py (later run.py, analyze.py), tasks/, results/
+third_party/  vendored, unmodified BFCL subset (Apache-2.0, see its NOTICE.md)
+docs/         plan, phase log, research notes, architecture notes
+vercel.json   Vercel Services: web/ at /, server.app:app at /api/*
 ```

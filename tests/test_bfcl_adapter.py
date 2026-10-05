@@ -1,17 +1,12 @@
-"""Offline checks of eval/bfcl_adapter.py against BFCL's own checker. No network, no LLM.
+"""Offline checks of agent/bfcl_adapter.py against BFCL's own checker. No network, no LLM.
 
 Replaying the ground-truth calls through our tool wrappers must score as valid on every
 multi_turn_base task; if it doesn't, the adapter is changing behaviour somewhere.
 """
 
-import sys
-from pathlib import Path
-
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "eval"))
-
-from bfcl_adapter import BFCLEnv, format_call, load_tasks, parse_call, score  # noqa: E402
+from agent.bfcl_adapter import BFCLEnv, format_call, load_tasks, parse_call, score
 
 ALL_TASKS = load_tasks()
 

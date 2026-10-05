@@ -2,7 +2,7 @@
 
 **Reliable, token-efficient tool-using AI agents on free-tier LLMs.**
 
-> Status: 🚧 Phase 0 (setup). See [docs/PROJECT_PLAN.md](docs/PROJECT_PLAN.md).
+> Status: 🚧 Phase 2 (walking skeleton). See [docs/PROJECT_PLAN.md](docs/PROJECT_PLAN.md) and the [phase log](docs/PHASE_LOG.md).
 >
 > Live demo: _coming in Phase 2_ · Results: _coming in Phase 9_
 
