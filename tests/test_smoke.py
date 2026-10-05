@@ -13,7 +13,7 @@ def test_core_imports():
 
 
 def test_repo_layout():
-    for d in ["agent", "api", "web", "eval", "docs"]:
+    for d in ["agent", "server", "web", "eval", "docs", "third_party"]:
         assert (ROOT / d).is_dir(), f"missing {d}/"
 
 
