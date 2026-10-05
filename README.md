@@ -88,7 +88,7 @@ Skipped: `web_search.py` (requires paid SerpAPI). Memory APIs are a stretch goal
 | Agent framework | smolagents (Apache-2.0) |
 | Benchmark + tools | BFCL (Apache-2.0) |
 | LLMs | Groq free tier (`openai/gpt-oss-120b`, `openai/gpt-oss-20b`, `qwen/qwen3.8-27b`); fallbacks: Gemini Flash via Google AI Studio, then GitHub Models. All without a card. |
-| Local dev LLM (optional) | Ollama + `qwen2.5:3b-instruct` |
+| Local LLM | Not used by default (RAM-heavy on the 8 GB dev machine). Ollama + `qwen2.5:3b-instruct` only as a last resort. |
 | Retrieval (C1) | `rank-bm25`; `sentence-transformers` (embeddings precomputed at build time) |
 | Validation (C2) | Pydantic / jsonschema |
 | Cache, rate limit, budget | Upstash Redis (free tier) |
@@ -146,6 +146,6 @@ copy .env.example .env           # then add your API keys
 
 This project builds on:
 - **smolagents** © Hugging Face, Apache License 2.0
-- **Berkeley Function Calling Leaderboard (BFCL)** © Gorilla / UC Berkeley, Apache License 2.0. The simulated API classes are used with attribution, and modified files are marked.
+- **Berkeley Function Calling Leaderboard (BFCL)** © Gorilla / UC Berkeley, Apache License 2.0. A subset is vendored unmodified in `third_party/bfcl_eval/` (see its `NOTICE.md`); modified files, if any, are marked.
 
 Ideas reimplemented from papers are cited in [docs/RESEARCH_NOTES.md](docs/RESEARCH_NOTES.md).

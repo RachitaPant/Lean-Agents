@@ -35,7 +35,7 @@ Simulated API files: `gorilla_file_system.py`, `math_api.py`, `message_api.py`, 
 | `qwen2.5:3b-instruct` | ~47 tok/s | ~12 tok/s | ~26 s |
 | `qwen2.5:7b-instruct` | ~6 tok/s | 0.3 tok/s | 331 s (memory swapping; unusable) |
 
-- Use local models only as a free dev loop.
+- Project rule: don't run local models by default. Use hosted free tiers; fall back to a local model only when really necessary.
 
 ## Papers to read / cite
 

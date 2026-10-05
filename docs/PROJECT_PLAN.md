@@ -22,18 +22,18 @@ Progress tracking: tick boxes as you go.
 - [x] Repo skeleton: `agent/`, `api/`, `web/`, `eval/`, `docs/` (done)
 - [x] `requirements.txt`, `.env` from `.env.example`
 - [x] Set `OLLAMA_MODELS=D:\ollama` and `HF_HOME=D:\hf` (C: has little free space)
-- [ ] GitHub Actions workflow running `pytest`
+- [x] GitHub Actions workflow running `pytest` (green on first push, 2026-10-04)
 - [x] `scripts/hello_groq.py`: one chat completion + one tool call against Groq (verified 2026-10-04 with `openai/gpt-oss-120b`)
 
 **Exit:** Groq call works from Python; CI is green.
 
 ## Phase 1: Understand the foundations (Weeks 2–3)
 
-- [ ] Read smolagents `src/smolagents/agents.py` (<1,000 LOC), `ToolCallingAgent`, the tools module, the model wrappers
-- [ ] Write `docs/ARCHITECTURE_NOTES.md`: how the smolagents loop works and where the hooks for C1–C5 go
-- [ ] Read BFCL: the multi-turn data format, `bfcl_eval/eval_checker/multi_turn_eval/func_source_code/*.py`, and how state-based checking works
-- [ ] Build `eval/bfcl_adapter.py`: wrap BFCL simulated API methods as smolagents tools (file system, trading bot, messaging first)
-- [ ] Run 3 BFCL multi-turn tasks end to end with the stock agent; score them with BFCL's checker
+- [x] Read smolagents `src/smolagents/agents.py` (<1,000 LOC), `ToolCallingAgent`, the tools module, the model wrappers
+- [x] Write `docs/ARCHITECTURE_NOTES.md`: how the smolagents loop works and where the hooks for C1–C5 go
+- [x] Read BFCL: the multi-turn data format, `bfcl_eval/eval_checker/multi_turn_eval/func_source_code/*.py`, and how state-based checking works
+- [x] Build `eval/bfcl_adapter.py`: wrap BFCL simulated API methods as smolagents tools (file system, trading bot, messaging first). Covers all 8 multi-turn classes; ground-truth replay of all 200 base tasks passes the official checker (`tests/test_bfcl_adapter.py`)
+- [x] Run 3 BFCL multi-turn tasks end to end with the stock agent; score them with BFCL's checker (`eval/run_smoke.py`; 1/3 pass in the recorded run; see ARCHITECTURE_NOTES §3)
 
 **Exit:** a stock agent solves a BFCL task and the official checker scores it.
 
@@ -55,8 +55,11 @@ Progress tracking: tick boxes as you go.
   - latency
   - invalid tool calls
   - provider used
-- [ ] Quota-aware and resumable: pause at the daily limit, resume the next day (append-only JSONL)
-- [ ] **Pilot on 10 tasks** → measure real tokens per task → choose the sample size (target 40–60) and fix the seed
+  - **outcome category**: `pass` / `checker_fail` / `provider_reject` (HTTP 400, e.g. unknown tool, unparseable output) / `request_too_large` (HTTP 413) / `step_cap`
+- [ ] Quota-aware and resumable: pause at the daily limit, resume the next day (append-only JSONL). A 429/TPD mid-task is a *retry*, never a model failure
+- [ ] Exclude the Phase 1 dev smoke tasks (`multi_turn_base_3`, `_17`, `_100`) from the frozen sample
+- [ ] Reduce run-to-run noise: fix temperature (and seed, if Groq honours it); run the baseline **twice** on ~5 pilot tasks to measure the noise floor (Phase 1: `multi_turn_base_100` passed once, failed once)
+- [ ] **Pilot on 10 tasks** → measure real tokens per task (Phase 1 saw 4K–137K) → choose the sample size (target 40–60) within the daily quota budget, and fix the seed
 - [ ] Freeze `eval/tasks/frozen_sample.jsonl`
 - [ ] Run **Baseline** on the frozen sample
 - [ ] `eval/analyze.py`: success rate with 95% bootstrap CI, token/latency distributions, tables + plots
@@ -67,21 +70,28 @@ Progress tracking: tick boxes as you go.
 
 - [ ] Light work: read the papers in `RESEARCH_NOTES.md`; let overnight eval runs continue
 
-## Phase 4: C1, tool retrieval (Weeks 7–8)
+## Phase 4: C1, tool retrieval + token budget (Weeks 7–8)
 
-- [ ] Precompute tool descriptions + embeddings at build time (`agent/retrieval/`)
+Phase 1 found the stock prompt sends every tool description twice (system prompt + native `tools`) and replays the full history each step. On a 29-tool task that passed Groq's 8K-tokens-per-request ceiling (HTTP 413). See `docs/ARCHITECTURE_NOTES.md`.
+
+- [ ] Precompute tool descriptions + embeddings at build time (`agent/retrieval/`). Per the no-local-models rule, start with BM25 and use a hosted embedding API if embeddings are needed
 - [ ] Retrievers: BM25, embedding, hybrid; top-k tools per step
 - [ ] Safety net: if the agent names an unseen tool, re-retrieve with a larger k
+- [ ] Stop the double listing: tool docs either in the system prompt or in native `tools`, not both
+- [ ] History trimming: keep the task + recent steps verbatim, compress older observations, and keep each request under the provider's per-request limit
 - [ ] Ablation: k ∈ {3, 5, 10} × {BM25, embedding, hybrid}
 - [ ] Run **+C1**; compare with the Baseline
 - [ ] Ship to the live demo with a "tokens saved" counter
 
-**Metrics:** tokens per step and per task, success, tasks completed per day on a fixed quota.
+**Metrics:** tokens per step and per task, success, tasks completed per day on a fixed quota, `request_too_large` rate.
 
 ## Phase 5: C2, validate and repair (Weeks 9–10)
 
 - [ ] Validate every tool call: Pydantic/jsonschema checks on types, required fields, enums
 - [ ] Targeted error feedback (e.g. "`amount` must be a number; got 'ten'"), with a capped number of retries
+- [ ] Recover from provider-side rejections instead of dying: catch HTTP 400 `tool_use_failed` / `output_parse_failed` (currently fatal in smolagents), read `failed_generation`, feed back a targeted message (e.g. "tool `answer` doesn't exist; use `final_answer`")
+- [ ] Repairs seen in Phase 1: unwrap invented `{"arguments": {}}` / `{"args": {}}` on zero-argument tools
+- [ ] Side-effect-aware feedback: tell the model which state-changing calls already succeeded so a retry doesn't repeat them (Phase 1: `send_message` sent 4×)
 - [ ] Failure taxonomy: malformed JSON / wrong tool / wrong argument / wrong order
 - [ ] Run **+C1+C2**
 
@@ -127,6 +137,15 @@ Progress tracking: tick boxes as you go.
 - [ ] Project report/paper, slides, 2-minute demo video
 - [ ] Resume bullets + 90-second interview pitch
 - [ ] Optional: upstream issue/PR to smolagents (e.g. a validate-and-repair hook)
+
+## Future scope
+
+Not scheduled; pick up when there is time after the core phases.
+
+- [ ] **CI jobs that use API keys.** Store keys as GitHub Actions repository secrets (never in the repo). Then:
+  - a live provider smoke test (`scripts/hello_groq.py`, later one per router provider), run on manual dispatch or a weekly schedule, not on every push, to save free quota
+  - a small live agent run on 1–2 BFCL tasks as an end-to-end check
+  - skip these jobs on PRs from forks, since forks can't read secrets
 
 ---
 

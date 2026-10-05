@@ -28,7 +28,7 @@ It is evaluated on **BFCL multi-turn** tasks (simulated, sandboxed Python APIs) 
 ## Environment
 
 - Windows 11, 8 GB RAM, no CUDA. Use Python 3.12 (not 3.13) for ML libs.
-- Ollama with `qwen2.5:3b-instruct` is for local dev only. 7B models are unusable on this machine.
+- **No local models by default.** They eat the 8 GB of RAM. Use the hosted free-tier APIs (Groq first) for dev, tests and eval. Run a local model (Ollama, local embeddings, etc.) only when it is really necessary, i.e. no hosted option works, and ask the user first. Stop any Ollama server you start. If one is unavoidable, use `qwen2.5:3b-instruct`; 7B models are unusable here.
 - Store model caches on D: (`OLLAMA_MODELS=D:\ollama`, `HF_HOME=D:\hf`); C: is low on space.
 
 ## Layout
