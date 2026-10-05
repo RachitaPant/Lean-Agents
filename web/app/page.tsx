@@ -10,6 +10,7 @@ const OUTCOME_LABEL: Record<string, string> = {
   provider_reject: "Stopped: the LLM provider rejected a response",
   request_too_large: "Stopped: request exceeded the free tier's per-request limit",
   rate_limited: "Stopped: free-tier rate limit reached",
+  provider_unavailable: "Stopped: the LLM provider is temporarily unavailable",
   timeout: "Stopped: demo time limit reached",
   step_cap: "Stopped: too many steps in one turn",
   error: "Stopped: unexpected error",

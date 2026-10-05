@@ -71,6 +71,8 @@ def classify_error(e: BaseException) -> str:
         return "request_too_large"
     if "Error code: 400" in text:
         return "provider_reject"
+    if any(f"Error code: {c}" in text for c in (500, 502, 503, 504)):
+        return "provider_unavailable"  # e.g. Groq 503 "over capacity": a C5 failover case
     return "error"
 
 

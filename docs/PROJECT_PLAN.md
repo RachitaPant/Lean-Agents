@@ -42,7 +42,7 @@ Progress tracking: tick boxes as you go.
 - [x] `api/run.py`: Vercel Python function that runs one task and streams each step (tool, args, result, tokens). Built as FastAPI `server/app.py` (`POST /api/run`, NDJSON) on the shared `agent/runner.py`
 - [x] `web/`: Next.js page with a preset-task picker and a live step-by-step trace viewer
 - [x] Upstash Redis: per-visitor rate limit + global daily token budget (`server/guard.py`, plus a one-run-at-a-time lock; verified against the free Upstash DB, 2026-10-05)
-- [ ] Deploy to Vercel; add the Groq key as an env var in the Vercel dashboard (never commit keys)
+- [x] Deploy to Vercel; add the Groq key as an env var in the Vercel dashboard (never commit keys). Live: https://lean-agents-brown.vercel.app (2026-10-05)
 
 **Exit:** a public URL where anyone can click "Run" and watch the agent. Add it to GitHub and LinkedIn.
 
@@ -55,7 +55,7 @@ Progress tracking: tick boxes as you go.
   - latency
   - invalid tool calls
   - provider used
-  - **outcome category**: `pass` / `checker_fail` / `provider_reject` (HTTP 400, e.g. unknown tool, unparseable output) / `request_too_large` (HTTP 413) / `step_cap`
+  - **outcome category**: `pass` / `checker_fail` / `provider_reject` (HTTP 400, e.g. unknown tool, unparseable output) / `request_too_large` (HTTP 413) / `provider_unavailable` (5xx, e.g. Groq 503 over capacity) / `step_cap`
 - [ ] Quota-aware and resumable: pause at the daily limit, resume the next day (append-only JSONL). A 429/TPD mid-task is a *retry*, never a model failure
 - [ ] Exclude the Phase 1 dev smoke tasks (`multi_turn_base_3`, `_17`, `_100`) and the demo presets (`_50`, `_100`, `_132`, `_182`, see `server/app.py`) from the frozen sample
 - [ ] Reduce run-to-run noise: fix temperature (and seed, if Groq honours it); run the baseline **twice** on ~5 pilot tasks to measure the noise floor (Phase 1: `multi_turn_base_100` passed once, failed once)

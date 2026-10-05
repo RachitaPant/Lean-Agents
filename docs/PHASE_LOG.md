@@ -35,6 +35,8 @@ How the direction has moved so far, newest last:
    measured.
 9. **One demo run at a time** (Phase 2): 8K tokens/minute can't serve two concurrent runs. A
    global lock keeps the demo usable until the C5 router (Phase 6).
+10. **Live from Week 1 of build** (Phase 2): https://lean-agents-brown.vercel.app. The first
+    live failure was a provider outage (Groq 503), which is early real-world evidence for C5.
 
 ---
 
@@ -120,11 +122,11 @@ the official checker.
 
 ---
 
-## Phase 2: Walking skeleton deployed (in progress, started 2026-10-05)
+## Phase 2: Walking skeleton deployed (2026-10-05)
 
 **Goal:** a public URL where anyone can click "Run" and watch the agent.
 
-**Done so far**
+**Done**
 - `agent/runner.py`: the shared agent loop, moved out of `eval/run_smoke.py`. It yields trace
   events (`turn_start`, `tool_call`, `tool_result`, `step`, `turn_end`, `run_error`, `done`) and
   classifies outcomes (pass / checker_fail / provider_reject / request_too_large /
@@ -141,7 +143,7 @@ the official checker.
   web app (lint, typecheck, build).
 - Verified locally: a real run streamed to the browser and was scored by the checker.
 
-**Findings so far**
+**Findings**
 1. **Vercel Services** (beta, all plans) deploy a Next.js frontend and a Python service as one
    project on one domain, with streaming on by default. Function limits: 300 s, 500 MB.
 2. The backend lives in `server/`, not `api/`. On Vercel an `api/` folder triggers the older
@@ -157,4 +159,25 @@ the official checker.
 
 - Upstash (free tier, Mumbai) verified: counters, budget and the run lock all work against the real database.
 
-**Waiting on the user:** the Vercel project setup and its environment variables.
+- **Deployed** to https://lean-agents-brown.vercel.app with Vercel Services (detected from
+  `vercel.json`); env vars set in the Vercel dashboard. `/api/health` confirms the Groq key
+  and Upstash.
+
+**Live results** (2 runs of `multi_turn_base_50`, `gpt-oss-120b`; demo checks, not benchmark numbers)
+
+| Run | Outcome | LLM calls | Prompt tokens | Time |
+|---|---|---|---|---|
+| 1 | stopped: Groq **HTTP 503 "over capacity"** after 1 correct call | 2 | 4,830 | ~22 s |
+| 2 | **pass** (BFCL checker valid) | 3 | 14,782 | 100.6 s |
+
+6. **Streaming works in production:** events arrived at +26 s, +61 s and +101 s, as each step
+   finished. Nothing was buffered to the end.
+7. **Steps are 25–35 s apart** although each LLM call takes ~1.5 s. At ~5K tokens per step,
+   Groq's 8K tokens/minute limit makes smolagents wait and retry. C1 (smaller prompts) directly
+   speeds up the demo.
+8. **Provider outages are real.** A Groq 503 ended run 1. It was first classified as a generic
+   `error`; it is now `provider_unavailable`, a C5 failover case.
+
+**Exit criterion met:** a public URL where anyone can click "Run" and watch the agent.
+
+**Left for the user:** add the live link to the GitHub repo description and LinkedIn.

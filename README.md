@@ -2,9 +2,9 @@
 
 **Reliable, token-efficient tool-using AI agents on free-tier LLMs.**
 
-> Status: 🚧 Phase 2 (walking skeleton). See [docs/PROJECT_PLAN.md](docs/PROJECT_PLAN.md) and the [phase log](docs/PHASE_LOG.md).
+> Status: ✅ Phase 2 (walking skeleton deployed); next: Phase 3 (baseline + evaluation harness). See [docs/PROJECT_PLAN.md](docs/PROJECT_PLAN.md) and the [phase log](docs/PHASE_LOG.md).
 >
-> Live demo: _coming in Phase 2_ · Results: _coming in Phase 9_
+> **Live demo: [lean-agents-brown.vercel.app](https://lean-agents-brown.vercel.app)** (baseline agent) · Results: _coming in Phase 9_
 
 ---
 
