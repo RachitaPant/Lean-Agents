@@ -34,6 +34,8 @@ function formatArgs(args: unknown): string {
 
 export default function Trace({ events, running }: { events: RunEvent[]; running: boolean }) {
   const turns = buildTurns(events);
+  const start = events.find((e) => e.type === "run_start");
+  const totalTools = start && start.type === "run_start" ? start.tools : undefined;
   return (
     <ol className="space-y-6">
       {turns.map((turn, ti) => (
@@ -67,6 +69,11 @@ export default function Trace({ events, running }: { events: RunEvent[]; running
               ) : (
                 <div key={i} className="flex flex-wrap items-center gap-x-3 text-xs text-zinc-500">
                   <span>step {item.step}</span>
+                  {item.tools_offered !== undefined && totalTools !== undefined && (
+                    <span>
+                      {item.tools_offered - 1} of {totalTools} tools offered
+                    </span>
+                  )}
                   <span>
                     {item.prompt_tokens.toLocaleString()} in / {item.completion_tokens.toLocaleString()} out tokens
                   </span>

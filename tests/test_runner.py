@@ -103,4 +103,5 @@ def test_classify_error():
     assert classify_error(Exception("Error code: 413 - too large")) == "request_too_large"
     assert classify_error(Exception("Agent interrupted.")) == "timeout"
     assert classify_error(Exception("Error code: 503 - over capacity")) == "provider_unavailable"
+    assert classify_error(Exception("Error while generating output: Connection error.")) == "provider_unavailable"
     assert classify_error(Exception("boom")) == "error"

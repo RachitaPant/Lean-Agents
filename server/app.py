@@ -2,7 +2,7 @@
 
     GET  /api/health    liveness + which protections are active
     GET  /api/presets   the demo tasks a visitor can pick
-    POST /api/run       {"task_id": ...} → NDJSON stream of agent trace events (agent/runner.py)
+    POST /api/run       {"task_id": ..., "agent": "c1"|"baseline"} → NDJSON stream of agent trace events (agent/runner.py)
 
 Only preset tasks can be run, so visitors can't spend the quota on arbitrary inputs.
 Local dev: uvicorn server.app:app --port 8000 (the Next.js dev server proxies /api to it).
@@ -18,7 +18,10 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
 
+from typing import Literal
+
 from agent.bfcl_adapter import load_tasks
+from agent.lean_agent import LeanOptions
 from agent.runner import make_model, stream_task
 from server.guard import guard_from_env
 
@@ -41,8 +44,12 @@ GUARD = guard_from_env()
 app = FastAPI(title="Lean Agents demo API", docs_url=None, redoc_url=None)
 
 
+AGENTS = {"baseline": None, "c1": LeanOptions()}  # stock smolagents vs C1 (tool retrieval + token budget)
+
+
 class RunRequest(BaseModel):
     task_id: str
+    agent: Literal["baseline", "c1"] = "c1"
 
 
 def client_ip(request: Request) -> str:
@@ -99,7 +106,11 @@ def run(body: RunRequest, request: Request):
         try:
             model = make_model()
             for event in stream_task(
-                TASKS[body.task_id], model, max_steps_per_turn=DEMO_MAX_STEPS_PER_TURN, deadline_s=DEMO_DEADLINE_S
+                TASKS[body.task_id],
+                model,
+                max_steps_per_turn=DEMO_MAX_STEPS_PER_TURN,
+                deadline_s=DEMO_DEADLINE_S,
+                lean=AGENTS[body.agent],
             ):
                 if event["type"] == "step":
                     tokens = event["prompt_tokens"] + event["completion_tokens"]

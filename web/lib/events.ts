@@ -21,6 +21,8 @@ export type RunEvent =
       completion_tokens: number;
       duration_s: number | null;
       error: string | null;
+      error_type?: string | null;
+      tools_offered?: number;
     }
   | { type: "turn_end"; turn: number; answer: string }
   | { type: "run_error"; kind: string; message: string }
@@ -35,18 +37,23 @@ export type RunEvent =
       prompt_tokens: number;
       completion_tokens: number;
       calls: string[][][];
+      tools_total?: number;
+      retrieval_misses?: number;
     };
+
+export type AgentKind = "c1" | "baseline";
 
 /** POST /api/run and call onEvent for each NDJSON line as it arrives. */
 export async function streamRun(
   taskId: string,
+  agent: AgentKind,
   onEvent: (e: RunEvent) => void,
   signal?: AbortSignal,
 ): Promise<void> {
   const resp = await fetch("/api/run", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ task_id: taskId }),
+    body: JSON.stringify({ task_id: taskId, agent }),
     signal,
   });
   if (!resp.ok || !resp.body) {

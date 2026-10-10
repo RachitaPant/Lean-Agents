@@ -2,7 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import Trace from "@/components/Trace";
-import { streamRun, type Preset, type RunEvent } from "@/lib/events";
+import { streamRun, type AgentKind, type Preset, type RunEvent } from "@/lib/events";
+
+const AGENT_LABEL: Record<AgentKind, string> = {
+  c1: "Lean (C1: tool retrieval + token budget)",
+  baseline: "Baseline (stock smolagents)",
+};
 
 const OUTCOME_LABEL: Record<string, string> = {
   pass: "Passed the BFCL checker",
@@ -19,6 +24,7 @@ const OUTCOME_LABEL: Record<string, string> = {
 export default function Home() {
   const [presets, setPresets] = useState<Preset[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
+  const [agent, setAgent] = useState<AgentKind>("c1");
   const [events, setEvents] = useState<RunEvent[]>([]);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -41,7 +47,7 @@ export default function Home() {
     setRunning(true);
     abortRef.current = new AbortController();
     try {
-      await streamRun(selected, (e) => setEvents((prev) => [...prev, e]), abortRef.current.signal);
+      await streamRun(selected, agent, (e) => setEvents((prev) => [...prev, e]), abortRef.current.signal);
     } catch (e) {
       if ((e as Error).name !== "AbortError") setError((e as Error).message);
     } finally {
@@ -67,8 +73,8 @@ export default function Home() {
           BFCL&apos;s own state checker.
         </p>
         <p className="mt-2 text-sm text-zinc-500">
-          Current agent: <strong>baseline</strong> (stock smolagents). Improvements land here as each contribution
-          ships.{" "}
+          Compare the stock smolagents agent with the lean agent. C1 offers each step only the relevant tools and
+          keeps requests small, which matters on a free tier with an 8K tokens-per-minute limit.{" "}
           <a className="underline" href="https://github.com/RachitaPant/Lean-Agents" target="_blank" rel="noreferrer">
             GitHub
           </a>
@@ -99,7 +105,23 @@ export default function Home() {
         ))}
       </section>
 
-      <div className="mb-8 flex items-center gap-3">
+      <div className="mb-8 flex flex-wrap items-center gap-3">
+        <div role="radiogroup" aria-label="Agent" className="flex rounded-lg border border-zinc-200 p-0.5 text-sm dark:border-zinc-800">
+          {(Object.keys(AGENT_LABEL) as AgentKind[]).map((k) => (
+            <button
+              key={k}
+              role="radio"
+              aria-checked={agent === k}
+              disabled={running}
+              onClick={() => setAgent(k)}
+              className={`rounded-md px-3 py-1.5 disabled:opacity-60 ${
+                agent === k ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900" : "text-zinc-600 dark:text-zinc-400"
+              }`}
+            >
+              {AGENT_LABEL[k]}
+            </button>
+          ))}
+        </div>
         <button
           onClick={run}
           disabled={!selected || running}

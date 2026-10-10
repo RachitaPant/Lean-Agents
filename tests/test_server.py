@@ -97,3 +97,22 @@ def test_production_without_upstash_fails_closed(monkeypatch):
     monkeypatch.delenv("UPSTASH_REDIS_REST_TOKEN", raising=False)
     monkeypatch.setenv("VERCEL", "1")
     assert guard_from_env() is None
+
+
+def test_run_with_c1_offers_fewer_tools(client, monkeypatch):
+    script = [
+        tool_msg("get_stock_info", {"symbol": "NVDA"}),
+        text_msg("NVDA is $220.34"),
+        tool_msg("fund_account", {"amount": 2203.4}),
+        text_msg("Funded"),
+    ]
+    monkeypatch.setattr(app_module, "make_model", lambda: ScriptedModel(script))
+    resp = client.post("/api/run", json={"task_id": "multi_turn_base_100", "agent": "c1"})
+    events = [json.loads(line) for line in resp.text.splitlines()]
+    total = events[0]["tools"]
+    steps = [e for e in events if e["type"] == "step"]
+    assert events[-1]["outcome"] == "pass" and all(e["tools_offered"] - 1 < total for e in steps)
+
+
+def test_unknown_agent_rejected(client):
+    assert client.post("/api/run", json={"task_id": "multi_turn_base_100", "agent": "magic"}).status_code == 422

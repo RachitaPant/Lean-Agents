@@ -1,0 +1,44 @@
+{
+  "source": "eval/tasks/dev.jsonl",
+  "threshold": 0.5,
+  "classes": {
+    "GorillaFileSystem": [
+      "cat",
+      "cd",
+      "wc"
+    ],
+    "MathAPI": [
+      "mean"
+    ],
+    "MessageAPI": [
+      "send_message",
+      "view_messages_sent"
+    ],
+    "TicketAPI": [
+      "create_ticket"
+    ],
+    "TradingBot": [
+      "cancel_order",
+      "get_order_details",
+      "get_stock_info",
+      "place_order"
+    ],
+    "TravelAPI": [
+      "book_flight",
+      "get_flight_cost",
+      "purchase_insurance",
+      "retrieve_invoice"
+    ],
+    "TwitterAPI": [
+      "post_tweet"
+    ],
+    "VehicleControlAPI": [
+      "estimate_distance",
+      "fillFuelTank",
+      "get_zipcode_based_on_city",
+      "lockDoors",
+      "pressBrakePedal",
+      "startEngine"
+    ]
+  }
+}

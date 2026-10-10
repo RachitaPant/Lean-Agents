@@ -48,7 +48,7 @@ Progress tracking: tick boxes as you go.
 
 ## Phase 3: Baseline + evaluation harness (Weeks 5–6)
 
-- [ ] `eval/run.py --config <name> --tasks <file>`. Per task it logs:
+- [x] `eval/run.py --config <name> --tasks <file>`. Per task it logs:
   - success
   - prompt/completion tokens
   - LLM calls
@@ -56,13 +56,13 @@ Progress tracking: tick boxes as you go.
   - invalid tool calls
   - provider used
   - **outcome category**: `pass` / `checker_fail` / `provider_reject` (HTTP 400, e.g. unknown tool, unparseable output) / `request_too_large` (HTTP 413) / `provider_unavailable` (5xx, e.g. Groq 503 over capacity) / `step_cap`
-- [ ] Quota-aware and resumable: pause at the daily limit, resume the next day (append-only JSONL). A 429/TPD mid-task is a *retry*, never a model failure
-- [ ] Exclude the Phase 1 dev smoke tasks (`multi_turn_base_3`, `_17`, `_100`) and the demo presets (`_50`, `_100`, `_132`, `_182`, see `server/app.py`) from the frozen sample
-- [ ] Reduce run-to-run noise: fix temperature (and seed, if Groq honours it); run the baseline **twice** on ~5 pilot tasks to measure the noise floor (Phase 1: `multi_turn_base_100` passed once, failed once)
+- [x] Quota-aware and resumable: pause at the daily limit, resume the next day (append-only JSONL). A 429/TPD mid-task is a *retry*, never a model failure (`--wait-on-quota` sleeps through it; 5xx retried up to 3×)
+- [x] Exclude the Phase 1 dev smoke tasks (`multi_turn_base_3`, `_17`, `_100`) and the demo presets (`_50`, `_100`, `_132`, `_182`, see `server/app.py`) from the frozen sample
+- [ ] Reduce run-to-run noise: fix temperature (and seed, if Groq honours it) (done: temperature 0.001 = BFCL default, seed 42, both logged per record; Groq's seed is best-effort); run the baseline **twice** on ~5 pilot tasks to measure the noise floor (Phase 1: `multi_turn_base_100` passed once, failed once)
 - [ ] **Pilot on 10 tasks** → measure real tokens per task (Phase 1 saw 4K–137K) → choose the sample size (target 40–60) within the daily quota budget, and fix the seed
 - [ ] Freeze `eval/tasks/frozen_sample.jsonl`
 - [ ] Run **Baseline** on the frozen sample
-- [ ] `eval/analyze.py`: success rate with 95% bootstrap CI, token/latency distributions, tables + plots
+- [x] `eval/analyze.py`: success rate with 95% bootstrap CI, token/latency distributions, tables + plots
 
 **Exit:** a publishable baseline table.
 
@@ -70,16 +70,18 @@ Progress tracking: tick boxes as you go.
 
 - [ ] Light work: read the papers in `RESEARCH_NOTES.md`; let overnight eval runs continue
 
-## Phase 4: C1, tool retrieval + token budget (Weeks 7–8)
+## Phase 4: C1, tool retrieval + token budget (Weeks 7–8; **moved before the Phase 3 baseline run**, 2026-10-06)
+
+Reordered because the stock agent fits only 2–3 tasks/day in Groq's free quota (Phase 3 pilot). C1 is developed and tuned on `eval/tasks/dev.jsonl` (30 tasks, disjoint from pilot and the future frozen sample); the baseline pilot continues in between.
 
 Phase 1 found the stock prompt sends every tool description twice (system prompt + native `tools`) and replays the full history each step. On a 29-tool task that passed Groq's 8K-tokens-per-request ceiling (HTTP 413). See `docs/ARCHITECTURE_NOTES.md`.
 
-- [ ] Precompute tool descriptions + embeddings at build time (`agent/retrieval/`). Per the no-local-models rule, start with BM25 and use a hosted embedding API if embeddings are needed
-- [ ] Retrievers: BM25, embedding, hybrid; top-k tools per step
-- [ ] Safety net: if the agent names an unseen tool, re-retrieve with a larger k
-- [ ] Stop the double listing: tool docs either in the system prompt or in native `tools`, not both
-- [ ] History trimming: keep the task + recent steps verbatim, compress older observations, and keep each request under the provider's per-request limit
-- [ ] Ablation: k ∈ {3, 5, 10} × {BM25, embedding, hybrid}
+- [x] Precompute tool descriptions + embeddings at build time (`agent/retrieval/`). Per the no-local-models rule, start with BM25 and use a hosted embedding API if embeddings are needed. Done: dependency-free BM25 over name + description + params + **response fields**, plus per-API **core tools** learned from dev (`agent/retrieval/core_tools.json`, `eval/build_core_tools.py`). Embeddings deferred (BM25 + core reaches 90% turn coverage on dev)
+- [ ] Retrievers: BM25, embedding, hybrid; top-k tools per step (BM25 done, per step with turn text + last observation; embedding/hybrid only if live misses justify it)
+- [x] Safety net: if the agent names an unseen tool, re-retrieve with a larger k (a real-but-unoffered tool rejected by Groq is added and the step retried)
+- [x] Stop the double listing: tool docs either in the system prompt or in native `tools`, not both (+ API boilerplate stated once)
+- [x] History trimming: keep the task + recent steps verbatim, compress older observations, and keep each request under the provider's per-request limit
+- [ ] Ablation: k ∈ {3, 5, 10} × {BM25, embedding, hybrid} (configs `c1_k3`, `c1`, `c1_k10`, `c1_listing`, `c1_retrieval`; offline recall table in the phase log)
 - [ ] Run **+C1**; compare with the Baseline
 - [ ] Ship to the live demo with a "tokens saved" counter
 

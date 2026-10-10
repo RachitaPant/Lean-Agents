@@ -118,6 +118,7 @@ class BFCLTool(Tool):
                 spec["type"] = [spec["type"], "null"]
             self.inputs[pname] = spec
         self.param_order = list(params.get("properties", {}))
+        self.response_doc = doc.get("response", {})  # BFCL documents outputs too; used by C1 retrieval
         self._method = method
         self._env = env
         super().__init__()

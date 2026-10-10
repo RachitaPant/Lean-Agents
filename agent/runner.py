@@ -25,6 +25,8 @@ from smolagents.memory import ToolCall
 from smolagents.models import ChatMessage, ChatMessageToolCall, ChatMessageToolCallFunction
 
 from agent.bfcl_adapter import BFCLEnv, score
+from agent.lean_agent import LeanOptions, LeanToolCallingAgent
+from agent.retrieval.core_tools import core_tools_for
 
 BFCL_MAX_STEPS_PER_TURN = 20
 MAX_OBSERVATION_CHARS = 2000
@@ -51,12 +53,20 @@ class BFCLTurnModel(OpenAIServerModel):
         return super().parse_tool_calls(message)
 
 
-def make_model(model_id: str | None = None) -> BFCLTurnModel:
+def make_model(
+    model_id: str | None = None, temperature: float | None = None, seed: int | None = None
+) -> BFCLTurnModel:
+    sampling = {}
+    if temperature is not None:
+        sampling["temperature"] = temperature
+    if seed is not None:
+        sampling["seed"] = seed  # Groq: best-effort determinism only
     return BFCLTurnModel(
         model_id=model_id or os.getenv("GROQ_MODEL", "openai/gpt-oss-120b"),
         api_base=os.getenv("GROQ_BASE_URL", "https://api.groq.com/openai/v1"),
         api_key=os.environ["GROQ_API_KEY"],
         tool_choice="auto",
+        **sampling,
     )
 
 
@@ -73,6 +83,8 @@ def classify_error(e: BaseException) -> str:
         return "provider_reject"
     if any(f"Error code: {c}" in text for c in (500, 502, 503, 504)):
         return "provider_unavailable"  # e.g. Groq 503 "over capacity": a C5 failover case
+    if "Connection error" in text or "timed out" in text.lower():
+        return "provider_unavailable"  # network drop (e.g. laptop asleep): infra, retried
     return "error"
 
 
@@ -85,10 +97,12 @@ def stream_task(
     model,
     max_steps_per_turn: int = BFCL_MAX_STEPS_PER_TURN,
     deadline_s: float | None = None,
+    lean: LeanOptions | None = None,
 ) -> Iterator[dict]:
-    """Run `task` turn by turn, yielding trace events. Never raises for agent/provider errors."""
+    """Run `task` turn by turn, yielding trace events. Never raises for agent/provider errors.
+    `lean` switches on C1 (tool retrieval + token budget); None = stock smolagents agent."""
     env = BFCLEnv(task)
-    agent = ToolCallingAgent(
+    common = dict(
         tools=list(env.tools.values()),
         model=model,
         max_steps=max_steps_per_turn,
@@ -96,6 +110,10 @@ def stream_task(
         step_callbacks=[env.end_step],
         verbosity_level=0,
     )
+    if lean is None:
+        agent = ToolCallingAgent(**common)
+    else:
+        agent = LeanToolCallingAgent(options=lean, core_tool_names=core_tools_for(task["involved_classes"]), **common)
     t0 = time.time()
     hit_step_cap = False
     run_error = None
@@ -139,6 +157,8 @@ def stream_task(
                         "completion_tokens": usage.output_tokens if usage else 0,
                         "duration_s": round(item.timing.duration or 0, 2) if item.timing else None,
                         "error": _truncate(str(item.error), 500) if item.error else None,
+                        "error_type": type(item.error).__name__ if item.error else None,
+                        "tools_offered": len(agent.tools_and_managed_agents),
                     }
                     if deadline_s is not None and time.time() - t0 > deadline_s:
                         agent.interrupt()  # raises "Agent interrupted" before the next step
@@ -185,5 +205,7 @@ def stream_task(
         "run_error": run_error,
         "latency_s": round(time.time() - t0, 1),
         "calls": env.calls,
+        "tools_total": len(env.tools),
+        "retrieval_misses": getattr(agent, "retrieval_misses", 0),
         **totals,
     }

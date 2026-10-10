@@ -37,6 +37,9 @@ How the direction has moved so far, newest last:
    global lock keeps the demo usable until the C5 router (Phase 6).
 10. **Live from Week 1 of build** (Phase 2): https://lean-agents-brown.vercel.app. The first
     live failure was a provider outage (Groq 503), which is early real-world evidence for C5.
+11. **C1 before the baseline run** (Phase 3 → 4, 2026-10-06): the user chose to build C1 first
+    because the stock agent fits only 2–3 tasks/day. A 30-task **dev set** was added for all
+    tuning; the frozen sample will exclude it.
 
 ---
 
@@ -181,3 +184,94 @@ the official checker.
 **Exit criterion met:** a public URL where anyone can click "Run" and watch the agent.
 
 **Left for the user:** add the live link to the GitHub repo description and LinkedIn.
+
+---
+
+## Phase 3: Baseline + evaluation harness (in progress, started 2026-10-05)
+
+**Done so far**
+- `eval/configs.py` (named configs; baseline = gpt-oss-120b, temperature 0.001 = BFCL default,
+  seed 42), `eval/run.py` (resumable, append-only, quota-aware, per-step progress log),
+  `eval/make_tasks.py` (stratified, seeded, never overwrites), `eval/analyze.py` (bootstrap
+  CI, outcomes, token/latency stats, repeat agreement, plots). 234 tests.
+- Pilot sample: 10 tasks across 10 API groups (`eval/tasks/pilot.jsonl`, seed 1). Pilot running.
+
+**Findings so far**
+1. **The first pilot attempt sat silent for ~55 min.** No bug: every request was ~7K tokens
+   against the 8K tokens/minute limit, so the OpenAI client waited 43–52 s before each step,
+   and nothing was logged until a whole task finished. The harness now logs every step, and no
+   longer re-runs a whole task after a per-minute 429 (the lower layers already retry).
+2. **Six of the 10 pilot tasks start at 7–8K tokens on step 1** (27–36 tools; the first
+   real request measured 6,675 tokens). After a step or two of history they pass 8K, so Groq
+   returns 413 and the stock agent cannot finish them.
+3. **Throughput is the binding constraint, not wall time.** At ~7K tokens per call,
+   200K tokens/day is roughly 28 LLM calls a day, i.e. 2–3 baseline tasks per day per model.
+   A 50-task frozen baseline would take about 3 weeks of one model's quota, and each later
+   config the same again.
+4. Google's Gemini docs no longer publish free-tier numbers (only in each account's AI Studio
+   dashboard), so Gemini's capacity as an eval provider must be checked in the account.
+
+5. **Pilot so far (2 of 10 tasks final; `eval/results/pilot/baseline.jsonl`): both
+   `request_too_large`.** `multi_turn_base_156` got turns 1–2 right, then died at turn 3 when
+   the prompt passed 8K (6 calls, 35K tokens). `multi_turn_base_78` got turn 1 right, then
+   repeated the same invalid call (`cityA` is not a parameter) 7 times until the prompt passed
+   8K (11 calls, 74K tokens). So the stock agent is failing on context size and repeated
+   invalid calls, which are exactly what C1 and C2 target, not on understanding the task.
+6. **The daily limit is a rolling window.** `--wait-on-quota` woke at Groq's "try again in
+   ~45 min" hint three times; each time it spent ~7K tokens and hit the limit again. That hint
+   frees room for one request, not a task. The harness now sleeps at least 6 h.
+7. The pilot process stopped when the machine/session restarted (00:47); it is resumable.
+
+**Open decision (user):** how to make evaluation fit the quota.
+
+---
+
+## Phase 4: C1, tool retrieval + token budget (in progress, started 2026-10-06; before the Phase 3 baseline run)
+
+**Done so far**
+- `agent/lean_agent.py`: `LeanToolCallingAgent`, a `ToolCallingAgent` subclass with one switch
+  per lever (`LeanOptions`): single tool listing, compact descriptions, BM25 top-k + core
+  tools + already-used tools, observation-aware queries, retrieval-miss retry, history
+  trimming under a request token budget.
+- `agent/retrieval/`: dependency-free BM25; tool documents = name + description (minus API
+  boilerplate) + parameters + **response fields**; per-API core tools learned from dev.
+- Configs `c1`, `c1_listing`, `c1_retrieval`, `c1_k3`, `c1_k10`; the runner reports tools
+  offered per step and retrieval misses. 245 tests.
+
+**Findings (offline, dev set, zero LLM calls)**
+1. **~90% of a stock first request is tool descriptions:** 41% listed in the system prompt +
+   49% as native JSON (the same tools twice); 27% of everything is per-API boilerplate
+   repeated in every description.
+2. **Lexical retrieval alone misses prerequisites.** BM25 covered all needed tools in only 70%
+   of turns at k=5 (80% at k=10). The misses are tools users never mention: `pressBrakePedal`
+   before `startEngine`, `cd`, logins, `get_zipcode_based_on_city`. The descriptions don't
+   mention these dependencies either.
+3. **A per-API core-tools prior fixes most of it:** 90% turn coverage at k=5 (leave-one-task-out
+   on dev), offering 8.8 tools instead of 27.7.
+4. **Response schemas help retrieval:** "current stock price" ranked `get_stock_info` outside the
+   top 5 (its description never says "price"); adding BFCL's response fields put it first.
+   Coverage@5 rose from 68% to 70% and recall@5 from 79% to 82%.
+5. Querying with the current turn beats current + previous turn at every k.
+6. **Estimated first-request size (dev mean):** baseline 6,141 tokens → c1_listing 2,802 (−54%)
+   → c1 1,485 (−76%); c1_k3 1,373 (−78%); c1_k10 1,831 (−70%). Estimates from character
+   counts at Groq's measured 5.02 chars/token; live runs will give real numbers.
+
+**Live pilot: C1 vs baseline on the same 10 pilot tasks** (`eval/results/pilot/`, gpt-oss-120b;
+pilot numbers, not final results; the baseline pilot is paused at 3 tasks)
+
+| Config | Tasks | Success | Prompt tokens / LLM call | Mean tokens / task | Outcomes |
+|---|---|---|---|---|---|
+| baseline | 3 | 0/3 | 6,288 | 49,279 | request_too_large ×3 |
+| c1 | 10 | 6/10 (95% CI 30–90%) | 1,956 | 15,801 | pass 6, checker_fail 2, provider_reject 1, error 1 |
+
+7. **On all 3 tasks both configs have run, the baseline died of `request_too_large` and C1
+   finished:** 2 passes, 1 checker failure. On `multi_turn_base_156` C1 used 12 calls / 31K
+   tokens / 188 s and passed; the baseline used 6 calls / 35K tokens / 937 s and died.
+8. **C1's failures are model choices, not retrieval:** on `multi_turn_base_11` the model used
+   `find` although `ls` was offered, and put a hashtag in the tweet text instead of `tags`
+   (a C2 target). Retrieval misses across the pilot: 0.
+9. **A network drop was counted as a model failure** (`multi_turn_base_89`: "Connection
+   error.", likely the laptop sleeping). Connection errors and timeouts are now
+   `provider_unavailable` (retried). `eval/run.py --retry-outcomes error` re-runs that task.
+10. Quota pacing works: one `rate_limited_daily` stop, a 6 h sleep, then the run resumed by
+    itself.
