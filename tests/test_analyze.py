@@ -41,3 +41,14 @@ def test_infra_failures_and_markdown():
     assert s["infra_failures"] == 1 and s["invalid_calls_total"] == 2
     md = to_markdown({"baseline": s})
     assert "| baseline | 2 | 50.0% |" in md and "provider_unavailable: 1" in md
+
+
+def test_repairs_summarised():
+    a = rec("a", True)
+    a["repairs"] = [{"category": "wrong_tool", "tool": "answer", "source": "provider"}]
+    b = rec("b", False)
+    b["repairs"] = [{"category": "wrong_argument", "tool": "x", "source": "client"}] * 2
+    s = summarise([a, b, rec("c", True)])
+    assert s["repairs"] == {"wrong_argument": 2, "wrong_tool": 1}
+    assert (s["tasks_repaired"], s["tasks_repaired_passed"]) == (2, 1)
+    assert "2 tasks needed a repair, 1 of them still passed" in to_markdown({"c1_c2": s})

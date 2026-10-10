@@ -37,6 +37,31 @@ DATA_DIR = ROOT / "third_party" / "bfcl_eval" / "data"
 BASE_TASKS = DATA_DIR / "BFCL_v4_multi_turn_base.json"
 BASE_ANSWERS = DATA_DIR / "possible_answer" / "BFCL_v4_multi_turn_base.json"
 
+# Attributes left out of state snapshots: back-pointers (cycles) and constant descriptions
+_SNAPSHOT_SKIP = {"parent", "_api_description"}
+
+
+def snapshot(value, _depth: int = 0):
+    """Plain-data copy of an API object's state (public and private attributes), used to tell
+    which calls changed state. Skips back-pointers so the file system's tree doesn't loop."""
+    if _depth > 50:
+        return "..."
+    if isinstance(value, (str, int, float, bool)) or value is None:
+        return value
+    if isinstance(value, dict):
+        return {str(k): snapshot(v, _depth + 1) for k, v in value.items()}
+    if isinstance(value, (list, tuple, set)):
+        items = [snapshot(v, _depth + 1) for v in value]
+        return sorted(items, key=repr) if isinstance(value, set) else items
+    if hasattr(value, "__dict__"):
+        return {
+            k: snapshot(v, _depth + 1)
+            for k, v in vars(value).items()
+            if k not in _SNAPSHOT_SKIP and not callable(v)
+        }
+    return repr(value)
+
+
 # BFCL func-doc types -> smolagents input types
 _TYPE_MAP = {"float": "number", "dict": "object", "tuple": "array"}
 
@@ -126,11 +151,17 @@ class BFCLTool(Tool):
     def forward(self, **kwargs) -> str:
         # Optional args the model set to null mean "use the default": drop them.
         kwargs = {k: v for k, v in kwargs.items() if v is not None}
-        self._env.record(format_call(self.name, kwargs))
+        call = format_call(self.name, kwargs)
+        self._env.record(call)
+        instance = self._method.__self__
+        before = snapshot(instance)
         try:
             result = self._method(**kwargs)
         except Exception as e:  # mirror BFCL's executor: errors become the observation
             return f"Error during execution: {e}"
+        finally:
+            if snapshot(instance) != before:
+                self._env.mutations[-1].append(call)  # C2: "already done, don't repeat"
         if isinstance(result, str):
             return result
         try:
@@ -162,11 +193,18 @@ class BFCLEnv:
         # calls[turn][step] = ["cd(folder='x')", ...]
         self.calls: list[list[list[str]]] = []
         self._pending: list[str] = []
+        # mutations[turn] = calls that changed some API's state (incl. private state like the cwd)
+        self.mutations: list[list[str]] = [[]]
 
     # --- call log -------------------------------------------------------------------------
     def start_turn(self) -> None:
         self.end_step()
         self.calls.append([])
+        if self.calls[:-1]:
+            self.mutations.append([])
+
+    def mutations_this_turn(self) -> list[str]:
+        return list(self.mutations[-1])
 
     def record(self, call: str) -> None:
         self._pending.append(call)

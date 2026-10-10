@@ -275,3 +275,32 @@ pilot numbers, not final results; the baseline pilot is paused at 3 tasks)
    `provider_unavailable` (retried). `eval/run.py --retry-outcomes error` re-runs that task.
 10. Quota pacing works: one `rate_limited_daily` stop, a 6 h sleep, then the run resumed by
     itself.
+
+**Phase 4 status (2026-10-10):** C1 is built, committed (`2237c38`) and live in the demo. Its
+formal evaluation (ablations and +C1 vs baseline on the frozen sample) waits for the frozen
+sample, which waits for the baseline pilot.
+
+---
+
+## Phase 5: C2, validate and repair (in progress, started 2026-10-10)
+
+**Done so far**
+- `agent/repair.py`: validation with messages that name the tool and spell out its signature
+  (types, optional `?`, enums parsed from BFCL's `[Enum]: [...]` descriptions); unwrapping of
+  invented `{"arguments": {...}}` wrappers; parsing of provider HTTP 400s into categories.
+- Wired into `LeanToolCallingAgent` as `LeanOptions.repair`:
+  - a provider HTTP 400 (invented tool, schema mismatch, unparseable output) is turned into an
+    error the model sees on its next step, instead of killing the task; capped at 3 per turn;
+  - client-side validation runs before smolagents' own checks.
+- **Side-effect tracking** in the adapter: each call's API state is snapshotted before and
+  after; calls that changed state are listed in every repair message ("already done, do NOT
+  repeat"). Over all 200 ground truths it classes `send_message`, `cd`, `place_order` as
+  state-changing and `ls`, `get_stock_info`, `cat` as not.
+- Failure taxonomy logged per task (`repairs`) and summarised by `eval/analyze.py`.
+- Configs `c2` (C2 on the stock agent) and `c1_c2`; `eval/run.py --model` to develop on
+  `gpt-oss-20b`'s separate quota. 260 tests.
+
+**Design inputs (all failures recorded in Phases 1–4):** invented tool names `answer` ×3 and
+`json`; unknown argument `cityA` repeated 7× after smolagents' message ("Argument cityA is not in
+the tool's input schema") named neither the tool nor the valid arguments; invented wrappers
+`arguments`/`args` ×3; one `output_parse_failed`.

@@ -113,7 +113,12 @@ def stream_task(
     if lean is None:
         agent = ToolCallingAgent(**common)
     else:
-        agent = LeanToolCallingAgent(options=lean, core_tool_names=core_tools_for(task["involved_classes"]), **common)
+        agent = LeanToolCallingAgent(
+            options=lean,
+            core_tool_names=core_tools_for(task["involved_classes"]),
+            mutations_fn=env.mutations_this_turn,
+            **common,
+        )
     t0 = time.time()
     hit_step_cap = False
     run_error = None
@@ -207,5 +212,6 @@ def stream_task(
         "calls": env.calls,
         "tools_total": len(env.tools),
         "retrieval_misses": getattr(agent, "retrieval_misses", 0),
+        "repairs": getattr(agent, "repair_log", []),  # C2 failure taxonomy
         **totals,
     }

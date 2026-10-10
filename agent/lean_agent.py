@@ -27,8 +27,9 @@ import yaml
 from smolagents import ActionStep, ToolCallingAgent
 from smolagents.agents import populate_template
 from smolagents.models import get_tool_json_schema
-from smolagents.utils import AgentGenerationError
+from smolagents.utils import AgentGenerationError, AgentParsingError, AgentToolCallError
 
+from agent import repair as c2
 from agent.retrieval.tool_index import ToolIndex, split_preamble
 
 TOOL_LISTING_BLOCK = re.compile(
@@ -63,6 +64,7 @@ class LeanOptions:
     observation_query: bool = True
     history_keep_steps: int | None = 4  # None: replay full history (stock)
     request_token_budget: int | None = 6000  # estimated prompt tokens incl. tool schemas
+    repair: c2.RepairOptions | None = None  # C2 validate-and-repair; None = off
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -84,7 +86,15 @@ def _shorten(text: str, limit: int) -> str:
 
 
 class LeanToolCallingAgent(ToolCallingAgent):
-    def __init__(self, tools, model, options: LeanOptions, core_tool_names: set[str] | None = None, **kwargs):
+    def __init__(
+        self,
+        tools,
+        model,
+        options: LeanOptions,
+        core_tool_names: set[str] | None = None,
+        mutations_fn=None,  # () -> state-changing calls this turn (BFCLEnv.mutations_this_turn), for C2
+        **kwargs,
+    ):
         if options.compact_descriptions and not options.single_tool_listing:
             raise ValueError("compact_descriptions needs single_tool_listing (the API text lives in the lean prompt)")
         self.options = options
@@ -102,6 +112,10 @@ class LeanToolCallingAgent(ToolCallingAgent):
         self.core = (core_tool_names or set()) if options.core_tools else set()
         self.forced: set[str] = set()  # tools added after a retrieval miss
         self.retrieval_misses = 0
+        self.repair = options.repair
+        self.mutations_fn = mutations_fn or (lambda: [])
+        self.repair_log: list[dict] = []  # C2 failure taxonomy: one entry per detected invalid call
+        self._repair_turn, self._provider_repairs = None, 0
         templates = lean_prompt_templates() if options.single_tool_listing else None
         super().__init__(tools=tools, model=model, prompt_templates=templates, **kwargs)
         self.offered: list[str] = list(self.tools)
@@ -151,6 +165,8 @@ class LeanToolCallingAgent(ToolCallingAgent):
         return [self.tools[n] for n in self.offered if n in self.tools] + list(self.managed_agents.values())
 
     def _step_stream(self, memory_step):
+        if self._repair_turn is not self.task:  # new user turn: reset the per-turn repair budget
+            self._repair_turn, self._provider_repairs = self.task, 0
         for attempt in range(MAX_MISS_RETRIES + 1):
             self.select_tools()
             try:
@@ -159,10 +175,52 @@ class LeanToolCallingAgent(ToolCallingAgent):
             except AgentGenerationError as e:
                 m = MISSING_TOOL.search(str(e))
                 name = m.group(1) if m else None
-                if self.index is None or not name or name not in self.tools or attempt == MAX_MISS_RETRIES:
-                    raise
-                self.forced.add(name)  # a real tool we didn't offer: offer it and retry the step
-                self.retrieval_misses += 1
+                if self.index is not None and name and name in self.tools and attempt < MAX_MISS_RETRIES:
+                    self.forced.add(name)  # C1: a real tool we didn't offer: offer it and retry the step
+                    self.retrieval_misses += 1
+                    continue
+                self._recover_provider_error(e)  # C2: raises feedback the model sees, or re-raises e
+
+    # --- C2: validate and repair --------------------------------------------------------------
+    def _note(self) -> str:
+        return c2.already_done_note(self.mutations_fn()) if self.repair and self.repair.side_effect_notes else ""
+
+    def _log_repair(self, category: str, tool: str | None, source: str):
+        self.repair_log.append({"category": category, "tool": tool, "source": source})
+
+    def _recover_provider_error(self, error: AgentGenerationError):
+        """A provider HTTP 400 is fatal in stock smolagents. With C2 it becomes an AgentError
+        carrying targeted feedback: smolagents stores it on the step and the model sees it next."""
+        if not (self.repair and self.repair.recover_provider_errors):
+            raise error
+        parsed = c2.parse_provider_error(str(error))
+        if parsed is None or self._provider_repairs >= self.repair.max_repairs_per_turn:
+            raise error
+        category, detail = parsed
+        self._provider_repairs += 1
+        tool_name = detail.get("tool")
+        self._log_repair(category, tool_name, "provider")
+        if category == c2.WRONG_TOOL:
+            raise AgentToolCallError(c2.feedback_wrong_tool(tool_name, self.offered) + self._note(), self.logger)
+        if category == c2.WRONG_ARGUMENT and tool_name in self.tools:
+            problems = [f"the provider rejected the arguments ({detail.get('errors', '')})"]
+            raise AgentToolCallError(c2.feedback_arguments(self.tools[tool_name], problems) + self._note(), self.logger)
+        raise AgentParsingError(c2.feedback_malformed() + self._note(), self.logger)
+
+    def execute_tool_call(self, tool_name: str, arguments):
+        if not (self.repair and self.repair.validate_args) or tool_name == "final_answer" or tool_name not in self.tools:
+            if self.repair and tool_name not in self.tools and tool_name not in self.managed_agents:
+                self._log_repair(c2.WRONG_TOOL, tool_name, "client")
+            return super().execute_tool_call(tool_name, arguments)
+        tool = self.tools[tool_name]
+        arguments, unwrapped = c2.unwrap_arguments(tool, arguments)
+        if unwrapped:
+            self._log_repair(c2.WRAPPER, tool_name, "client")
+        problems = c2.validate_call(tool, arguments)
+        if problems:
+            self._log_repair(c2.WRONG_ARGUMENT, tool_name, "client")
+            raise AgentToolCallError(c2.feedback_arguments(tool, problems) + self._note(), self.logger)
+        return super().execute_tool_call(tool_name, arguments)
 
     # --- history ----------------------------------------------------------------------------
     def write_memory_to_messages(self, summary_mode: bool = False):

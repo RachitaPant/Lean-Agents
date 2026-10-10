@@ -28,6 +28,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from agent.bfcl_adapter import load_tasks  # noqa: E402
 from agent.runner import stream_task  # noqa: E402
+from dataclasses import replace  # noqa: E402
+
 from eval.configs import CONFIGS, Config  # noqa: E402
 
 HARNESS_VERSION = 1
@@ -192,11 +194,16 @@ def main() -> int:
     ap.add_argument("--limit", type=int, help="only the first N tasks of the file")
     ap.add_argument("--out", type=Path)
     ap.add_argument("--wait-on-quota", action="store_true")
+    ap.add_argument("--model", help="override the config's model (results go to <config>@<model>.jsonl)")
     ap.add_argument("--retry-outcomes", nargs="*", default=[], help="re-run tasks whose final outcome is one of these")
     args = ap.parse_args()
     tasks_file = args.tasks if args.tasks.is_absolute() else Path.cwd() / args.tasks
     config = CONFIGS[args.config]
-    out = args.out or results_path(tasks_file, config.name)
+    name = config.name
+    if args.model:  # e.g. develop on gpt-oss-20b's separate quota while gpt-oss-120b runs the baseline
+        config = replace(config, model_id=args.model)
+        name = f"{config.name}@{args.model.split('/')[-1]}"
+    out = args.out or results_path(tasks_file, name)
     return run(config, tasks_file, out, args.repeats, args.limit, args.wait_on_quota, frozenset(args.retry_outcomes))
 
 

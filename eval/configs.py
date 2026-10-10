@@ -9,6 +9,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, field, replace
 
 from agent.lean_agent import LeanOptions
+from agent.repair import RepairOptions
 from agent.runner import BFCL_MAX_STEPS_PER_TURN, make_model
 
 
@@ -31,6 +32,12 @@ class Config:
 
 
 C1 = LeanOptions()  # defaults: single listing, compact docs, BM25 k=5 + core tools, history 4 steps / 6K budget
+# Every C1 lever off: behaves as the stock agent, so C2 can be measured on its own
+STOCK = LeanOptions(
+    single_tool_listing=False, compact_descriptions=False, retriever=None, core_tools=False,
+    observation_query=False, history_keep_steps=None, request_token_budget=None,
+)
+C2 = RepairOptions()
 
 CONFIGS: dict[str, Config] = {
     c.name: c
@@ -53,5 +60,7 @@ CONFIGS: dict[str, Config] = {
         ),
         Config(name="c1_k3", description="c1 with k=3.", lean=replace(C1, k=3)),
         Config(name="c1_k10", description="c1 with k=10.", lean=replace(C1, k=10)),
+        Config(name="c2", description="Baseline + C2 validate-and-repair only.", lean=replace(STOCK, repair=C2)),
+        Config(name="c1_c2", description="Baseline + C1 + C2.", lean=replace(C1, repair=C2)),
     ]
 }

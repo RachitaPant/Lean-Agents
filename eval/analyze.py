@@ -78,6 +78,10 @@ def summarise(records: list[dict]) -> dict:
             statistics.mean(r.get("invalid_tool_calls", 0) for r in records) if records else float("nan")
         ),
         "repeat_agreement": repeat_agreement(by_task),
+        # C2: invalid calls caught and fed back, by category; "recovered" = the task still passed
+        "repairs": Counter(x["category"] for r in records for x in r.get("repairs") or []),
+        "tasks_repaired": sum(bool(r.get("repairs")) for r in records),
+        "tasks_repaired_passed": sum(bool(r.get("repairs")) and r["success"] for r in records),
     }
 
 
@@ -106,6 +110,12 @@ def to_markdown(summaries: dict[str, dict]) -> str:
     for name, s in summaries.items():
         parts = ", ".join(f"{k}: {v}" for k, v in s["outcomes"].most_common())
         lines.append(f"- {name}: {parts} (infra failures: {s['infra_failures']})")
+        if s["repairs"]:
+            cats = ", ".join(f"{k}: {v}" for k, v in s["repairs"].most_common())
+            lines.append(
+                f"  - repairs (C2): {cats}; {s['tasks_repaired']} tasks needed a repair, "
+                f"{s['tasks_repaired_passed']} of them still passed"
+            )
         if s["repeat_agreement"]:
             a = s["repeat_agreement"]
             lines.append(f"  - repeat agreement: {a['agree']}/{a['tasks']} tasks ({a['rate']:.0%}) same result across repeats")

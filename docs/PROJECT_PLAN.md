@@ -89,13 +89,13 @@ Phase 1 found the stock prompt sends every tool description twice (system prompt
 
 ## Phase 5: C2, validate and repair (Weeks 9–10)
 
-- [ ] Validate every tool call: Pydantic/jsonschema checks on types, required fields, enums
-- [ ] Targeted error feedback (e.g. "`amount` must be a number; got 'ten'"), with a capped number of retries
-- [ ] Recover from provider-side rejections instead of dying: catch HTTP 400 `tool_use_failed` / `output_parse_failed` (currently fatal in smolagents), read `failed_generation`, feed back a targeted message (e.g. "tool `answer` doesn't exist; use `final_answer`")
-- [ ] Repairs seen in Phase 1: unwrap invented `{"arguments": {}}` / `{"args": {}}` on zero-argument tools
-- [ ] Side-effect-aware feedback: tell the model which state-changing calls already succeeded so a retry doesn't repeat them (Phase 1: `send_message` sent 4×)
-- [ ] Failure taxonomy: malformed JSON / wrong tool / wrong argument / wrong order
-- [ ] Run **+C1+C2**
+- [x] Validate every tool call: Pydantic/jsonschema checks on types, required fields, enums (`agent/repair.py`: own checks incl. BFCL's `[Enum]: [...]` in descriptions; messages name the tool and its signature)
+- [x] Targeted error feedback (e.g. "`amount` must be a number; got 'ten'"), with a capped number of retries
+- [x] Recover from provider-side rejections instead of dying: catch HTTP 400 `tool_use_failed` / `output_parse_failed` (currently fatal in smolagents), read `failed_generation`, feed back a targeted message (e.g. "tool `answer` doesn't exist; use `final_answer`")
+- [x] Repairs seen in Phase 1: unwrap invented `{"arguments": {}}` / `{"args": {}}` on zero-argument tools
+- [x] Side-effect-aware feedback: tell the model which state-changing calls already succeeded so a retry doesn't repeat them (Phase 1: `send_message` sent 4×)
+- [x] Failure taxonomy: malformed JSON / wrong tool / wrong argument / wrong order (logged per task as `repairs`: wrong_tool, wrong_argument, malformed_output, wrapper_unwrapped; "wrong order" shows up as tool-returned errors, not yet categorised)
+- [ ] Run **+C1+C2** (configs `c2`, `c1_c2`; dev check on gpt-oss-20b running)
 
 **Metrics:** invalid-call rate, recovered failures, extra calls spent, success.
 
