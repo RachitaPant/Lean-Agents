@@ -40,6 +40,9 @@ How the direction has moved so far, newest last:
 11. **C1 before the baseline run** (Phase 3 → 4, 2026-10-06): the user chose to build C1 first
     because the stock agent fits only 2–3 tasks/day. A 30-task **dev set** was added for all
     tuning; the frozen sample will exclude it.
+12. **Paper track** (2026-10-12): C1 + C2 to be written up as a workshop / student-research
+    paper (`docs/PAPER_PLAN.md`). Adds a noise check, a 60-task frozen sample, a second model
+    and paired statistics; C3–C4 optional for the paper.
 
 ---
 

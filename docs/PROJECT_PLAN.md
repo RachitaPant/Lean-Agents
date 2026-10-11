@@ -151,6 +151,12 @@ Not scheduled; pick up when there is time after the core phases.
 
 ---
 
+## Paper track (added 2026-10-12)
+
+C1 + C2 are written up as a research paper alongside the plan: extra evaluation (noise check, a
+60-task frozen sample, a second model, ablations, McNemar), a related-work reading list, an outline
+and a timeline to a Feb–Mar 2027 submission. Details and checklist: [PAPER_PLAN.md](PAPER_PLAN.md).
+
 ## Timeline summary
 
 | Weeks | Phase | Live demo shows |

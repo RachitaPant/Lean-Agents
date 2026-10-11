@@ -16,6 +16,7 @@ It is evaluated on **BFCL multi-turn** tasks (simulated, sandboxed Python APIs) 
 - Plan and progress checkboxes: `docs/PROJECT_PLAN.md`. Check the current phase there first.
 - **Phase log:** `docs/PHASE_LOG.md` records, per phase, what was done, the findings, and how the project's direction changed. Update it at the end of every phase, and mid-phase when a finding changes the plan.
 - Verified facts, free-tier limits and papers: `docs/RESEARCH_NOTES.md`.
+- Paper track (C1 + C2 write-up, extra evaluation, related work): `docs/PAPER_PLAN.md`.
 
 ## Hard rules
 
