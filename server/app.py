@@ -2,7 +2,7 @@
 
     GET  /api/health    liveness + which protections are active
     GET  /api/presets   the demo tasks a visitor can pick
-    POST /api/run       {"task_id": ..., "agent": "c1"|"baseline"} → NDJSON stream of agent trace events (agent/runner.py)
+    POST /api/run       {"task_id": ..., "agent": "lean"|"baseline"} → NDJSON stream of agent trace events (agent/runner.py)
 
 Only preset tasks can be run, so visitors can't spend the quota on arbitrary inputs.
 Local dev: uvicorn server.app:app --port 8000 (the Next.js dev server proxies /api to it).
@@ -22,6 +22,7 @@ from typing import Literal
 
 from agent.bfcl_adapter import load_tasks
 from agent.lean_agent import LeanOptions
+from agent.repair import RepairOptions
 from agent.runner import make_model, stream_task
 from server.guard import guard_from_env
 
@@ -44,12 +45,14 @@ GUARD = guard_from_env()
 app = FastAPI(title="Lean Agents demo API", docs_url=None, redoc_url=None)
 
 
-AGENTS = {"baseline": None, "c1": LeanOptions()}  # stock smolagents vs C1 (tool retrieval + token budget)
+# "lean" = C1 (tool retrieval + token budget) + C2 (validate and repair). Without C2, one invented
+# tool name (e.g. `answer`) ends the run with a provider HTTP 400; with it, the model gets feedback.
+AGENTS = {"baseline": None, "lean": LeanOptions(repair=RepairOptions())}
 
 
 class RunRequest(BaseModel):
     task_id: str
-    agent: Literal["baseline", "c1"] = "c1"
+    agent: Literal["baseline", "lean"] = "lean"
 
 
 def client_ip(request: Request) -> str:

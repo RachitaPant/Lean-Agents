@@ -99,7 +99,7 @@ def test_production_without_upstash_fails_closed(monkeypatch):
     assert guard_from_env() is None
 
 
-def test_run_with_c1_offers_fewer_tools(client, monkeypatch):
+def test_run_with_lean_offers_fewer_tools(client, monkeypatch):
     script = [
         tool_msg("get_stock_info", {"symbol": "NVDA"}),
         text_msg("NVDA is $220.34"),
@@ -107,7 +107,7 @@ def test_run_with_c1_offers_fewer_tools(client, monkeypatch):
         text_msg("Funded"),
     ]
     monkeypatch.setattr(app_module, "make_model", lambda: ScriptedModel(script))
-    resp = client.post("/api/run", json={"task_id": "multi_turn_base_100", "agent": "c1"})
+    resp = client.post("/api/run", json={"task_id": "multi_turn_base_100", "agent": "lean"})
     events = [json.loads(line) for line in resp.text.splitlines()]
     total = events[0]["tools"]
     steps = [e for e in events if e["type"] == "step"]
@@ -116,3 +116,22 @@ def test_run_with_c1_offers_fewer_tools(client, monkeypatch):
 
 def test_unknown_agent_rejected(client):
     assert client.post("/api/run", json={"task_id": "multi_turn_base_100", "agent": "magic"}).status_code == 422
+
+
+def test_lean_demo_agent_recovers_from_invented_tool(client, monkeypatch):
+    """The live-demo failure of 2026-10-17: the model called a non-existent tool `answer`."""
+    bad = RuntimeError(
+        "Error code: 400 - {'error': {'message': \"Tool call validation failed: tool call validation failed: "
+        "attempted to call tool 'answer' which was not in request.tools\", 'code': 'tool_use_failed'}}"
+    )
+    script = [
+        tool_msg("get_stock_info", {"symbol": "NVDA"}),
+        bad,
+        text_msg("NVDA is $220.34"),
+        tool_msg("fund_account", {"amount": 2203.4}),
+        text_msg("Funded"),
+    ]
+    monkeypatch.setattr(app_module, "make_model", lambda: ScriptedModel(script))
+    resp = client.post("/api/run", json={"task_id": "multi_turn_base_100", "agent": "lean"})
+    done = [json.loads(line) for line in resp.text.splitlines()][-1]
+    assert done["outcome"] == "pass" and done["repairs"][0]["tool"] == "answer"

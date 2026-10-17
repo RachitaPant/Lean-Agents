@@ -39,9 +39,10 @@ export type RunEvent =
       calls: string[][][];
       tools_total?: number;
       retrieval_misses?: number;
+      repairs?: { category: string; tool: string | null; source: string }[];
     };
 
-export type AgentKind = "c1" | "baseline";
+export type AgentKind = "lean" | "baseline";
 
 /** POST /api/run and call onEvent for each NDJSON line as it arrives. */
 export async function streamRun(
