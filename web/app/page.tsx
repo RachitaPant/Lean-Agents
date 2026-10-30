@@ -125,7 +125,7 @@ export default function Home() {
       <main className="mx-auto w-full max-w-5xl flex-1 space-y-16 px-4 py-10 sm:px-6">
         {/* hero */}
         <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 to-violet-700 px-6 py-10 text-white shadow-lg sm:px-10">
-          <p className="text-sm font-medium text-indigo-200">A final-year research project</p>
+          <p className="text-sm font-medium text-indigo-200">An independent research project</p>
           <h1 className="mt-2 max-w-2xl text-3xl font-semibold tracking-tight sm:text-4xl">
             Watch an AI agent use apps to get things done, on a free AI service.
           </h1>

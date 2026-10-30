@@ -1,7 +1,7 @@
 # Lean Agents: Phase-Wise Project Plan
 
 **Assumptions:**
-- ~10–12 hours/week alongside college.
+- ~10–12 hours/week alongside other commitments.
 - Start mid-October 2026; finish by March 2027.
 - A 2-week exam buffer is included; move it to match your exam calendar.
 

@@ -4,7 +4,7 @@ Context for AI coding sessions on this repo.
 
 ## What this is
 
-**Lean Agents** is a B.Tech CSE final-year project (2026–27). It extends Hugging Face **smolagents** with:
+**Lean Agents** is an independent resume and research project (2026–27). It extends Hugging Face **smolagents** with:
 - **C1** tool retrieval
 - **C2** validate-and-repair
 - **C3** plan caching
