@@ -142,6 +142,10 @@ pip install -r requirements.txt  # created in Phase 0
 copy .env.example .env           # then add your API keys
 ```
 
+## Licence
+
+Code written for this project is under the [MIT licence](LICENSE). Third-party work keeps its own licence; see [NOTICE.md](NOTICE.md) for every project used.
+
 ## Attribution
 
 This project builds on:
